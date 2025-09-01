@@ -2,6 +2,7 @@ const { z } = require('zod');
 const { logger } = require('@librechat/data-schemas');
 const { createTempChatExpirationDate } = require('@librechat/api');
 const { Message } = require('~/db/models');
+const { mirrorTurn } = require('../../utils/gardener');
 
 const idSchema = z.string().uuid();
 
@@ -79,8 +80,31 @@ async function saveMessage(req, params, metadata) {
       update,
       { upsert: true, new: true },
     );
-
-    return message.toObject();
+    
+    const savedMessage = message.toObject();
+    
+    // Log to Gardener service if this is an assistant message
+    if (savedMessage && !savedMessage.isCreatedByUser) {
+      const parentMessage = await Message.findOne({ 
+        messageId: savedMessage.parentMessageId,
+        user: req.user.id 
+      }).exec();
+      
+      if (parentMessage) {
+        mirrorTurn({
+          chat_id: savedMessage.conversationId,
+          turn_id: savedMessage.messageId,
+          user_text: parentMessage.text,
+          model_text: savedMessage.text,
+          model: savedMessage.model,
+          ts: savedMessage.createdAt?.toISOString(),
+        }).catch(error => {
+          logger.error('Error in mirrorTurn:', error);
+        });
+      }
+    }
+    
+    return savedMessage;
   } catch (err) {
     logger.error('Error saving message:', err);
     logger.info(`---\`saveMessage\` context: ${metadata?.context}`);
