@@ -5,7 +5,7 @@ const { logger } = require('~/config');
  * Logs conversation turns to the Gardener service
  * @param {Object} ev - The event object containing conversation data
  */
-export async function mirrorTurn(ev) {
+async function mirrorTurn(ev) {
   const debugId = Math.random().toString(36).substring(2, 8);
   
   if (!process.env.GARDENER_URL) {
@@ -74,3 +74,5 @@ export async function mirrorTurn(ev) {
     });
   }
 }
+
+module.exports = { mirrorTurn };

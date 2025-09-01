@@ -83,6 +83,25 @@ async function saveMessage(req, params, metadata) {
     
     const savedMessage = message.toObject();
     
+    // If user sends a `/seed` command, mirror it as a seedling turn
+    if (savedMessage && savedMessage.isCreatedByUser && typeof savedMessage.text === 'string') {
+      const trimmed = savedMessage.text.trim();
+      if (trimmed.startsWith('/seed')) {
+        const seedText = trimmed.replace(/^\/seed\s*/i, '');
+        mirrorTurn({
+          chat_id: savedMessage.conversationId,
+          turn_id: savedMessage.messageId,
+          user_text: seedText,
+          model_text: '',
+          model: savedMessage.model,
+          seedling: true,
+          ts: savedMessage.createdAt?.toISOString(),
+        }).catch((error) => {
+          logger.error('Error in mirrorTurn (seedling):', error);
+        });
+      }
+    }
+
     // Log to Gardener service if this is an assistant message
     if (savedMessage && !savedMessage.isCreatedByUser) {
       const parentMessage = await Message.findOne({ 
