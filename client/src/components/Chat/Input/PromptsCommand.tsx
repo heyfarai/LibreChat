@@ -77,6 +77,34 @@ function PromptsCommand({
     options: prompts ?? [],
   });
 
+  const showSeedSuggestion = useMemo(() => {
+    const q = (searchValue || '').trim().toLowerCase();
+    return q === '' || 'seed'.startsWith(q);
+  }, [searchValue]);
+
+  const insertSeedCommand = useCallback(() => {
+    setSearchValue('');
+    setOpen(false);
+    setShowPromptsPopover(false);
+
+    if (textAreaRef.current) {
+      // Remove the triggering '/'
+      removeCharIfLast(textAreaRef.current, commandChar);
+
+      const ta = textAreaRef.current;
+      const start = ta.selectionStart ?? ta.value.length;
+      const end = ta.selectionEnd ?? start;
+      const before = ta.value.slice(0, start);
+      const after = ta.value.slice(end);
+      const insertion = '/seed ';
+      ta.value = `${before}${insertion}${after}`;
+      const caret = before.length + insertion.length;
+      ta.selectionStart = caret;
+      ta.selectionEnd = caret;
+      ta.focus();
+    }
+  }, [setOpen, setSearchValue, setShowPromptsPopover, textAreaRef]);
+
   const handleSelect = useCallback(
     (mention?: PromptOption, e?: React.KeyboardEvent<HTMLInputElement>) => {
       if (!mention) {
@@ -215,6 +243,16 @@ function PromptsCommand({
               }, 150);
             }}
           />
+          {open && showSeedSuggestion && (
+            <button
+              type="button"
+              onClick={insertSeedCommand}
+              className="mb-2 flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border-light bg-surface-primary px-3 py-2 text-left text-sm hover:bg-surface-secondary"
+            >
+              <span className="inline-block rounded bg-surface-tertiary px-1.5 py-0.5 text-xs text-text-secondary">/seed</span>
+              <span className="text-text-primary">Seed this turn</span>
+            </button>
+          )}
           <div className="max-h-40 overflow-y-auto">
             {(() => {
               if (isLoading && open) {
